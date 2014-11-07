@@ -1,8 +1,8 @@
 assignment5: assignment5.o
-	gcc -Wall -O3 assignment5.o -o assignment5
+	gcc -std=c99 -Wall -O3 assignment5.o -o assignment5
 
 assignment5.o: assignment5.c
-	gcc -Wall -O3 -c assignment5.c
+	gcc -std=c99 -Wall -O3 -c assignment5.c
 
 run:
 	./assignment5
