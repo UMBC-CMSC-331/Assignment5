@@ -12,8 +12,8 @@ Usage:
 // Valid values for the "type" field
 #define TYPE_INT16 0
 #define TYPE_INT32 1
-#define TYPE_FLOAT16 2
-#define TYPE_FLOAT32 3
+#define TYPE_FLOAT32 2
+#define TYPE_FLOAT64 3
 #define TYPE_ASCII 7
 #define TYPE_JUNK 8
 #define CONTROL_SKIP 9
@@ -109,6 +109,7 @@ int handle_datagram(datagram *dptr, FILE *fp)
 
 	// TODO: Handle the extra stuff with each version
 	//if (dptr->version == 1)...
+	// Skip bit, dupe bit, and checksum
 
 	/*
 	TODO: Handle control instructions
