@@ -20,6 +20,20 @@ Usage:
 #define CONTROL_BURN 10
 #define CONTROL_STOP 11
 
+// Return values for handle_datagram
+#define STATUS_CONTINUE 0
+#define STATUS_STOP -1
+#define STATUS_FAIL -2
+
+// Macro for printing different types of data
+#define PRINT_DATA(data, data_length, TYPE, FORMAT) { \
+		size_t num_elements = data_length / sizeof(TYPE); \
+		printf("Printing %lu elements:\n", num_elements); \
+		for (size_t i = 0; i < num_elements; ++i) { \
+			printf(FORMAT, *((TYPE*) data + i)); \
+		} \
+	}
+
 // Holds any version of a 32-bit datagram
 typedef struct {
 	uint8_t version: 4;
@@ -50,14 +64,11 @@ typedef struct {
 
 // Function prototypes (TODO: comment what these do)
 void test_sizes();
-int read_file(char *filename);
-int handle_datagram(datagram *dptr, FILE *fp);
-void print_data(unsigned char *data, unsigned size);
+int read_file(const char *filename);
+int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips);
 
 int main(int argc, char **argv)
 {
-	test_sizes();
-
 	int status = 0;
 	if (argc == 2) {
 		status = read_file(argv[1]);
@@ -82,67 +93,113 @@ void test_sizes()
 	printf("sizeof(my_data.data.version3) = %lu\n", sizeof(my_data.data.version3));
 }
 
-int read_file(char *filename)
+int read_file(const char *filename)
 {
 	int file_status = -1;
 	FILE *fp = fopen(filename, "rb");
 	if (fp) {
 		datagram temp_datagram;
 		int status = 0;
+		uint32_t skips = 0;
 		// Read each datagram in the file, until STOP or EOF is reached
-		while (!status) {
-			unsigned bytes_read = fread(&temp_datagram, sizeof(datagram), 1, fp);
+		while (status == STATUS_CONTINUE) {
+			size_t bytes_read = fread(&temp_datagram, 1, sizeof(datagram), fp);
+			printf("Read %lu bytes (datagram header).\n", bytes_read);
 			if (bytes_read == sizeof(datagram))
-				status = handle_datagram(&temp_datagram, fp);
+				status = handle_datagram(&temp_datagram, fp, &skips);
 			else
-				break;
+				status = STATUS_STOP;
 		}
 		file_status = 0;
 		fclose(fp);
+		if (status == STATUS_FAIL)
+			printf("An error occurred while processing \"%s\".\n", filename);
 	}
 	return file_status;
 }
 
-int handle_datagram(datagram *dptr, FILE *fp)
+int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
 {
-	int status = 0;
+	int status = STATUS_CONTINUE;
+
+	printf("Version = %u, Type = %u, Length = %u\n", dptr->version, dptr->type, dptr->length);
 
 	// TODO: Handle the extra stuff with each version
 	//if (dptr->version == 1)...
 	// Skip bit, dupe bit, and checksum
-
-	/*
-	TODO: Handle control instructions
-		We will only need to read and print data in the first 5 cases
-		Sadly, C has no template support, so this will be very redundant
-	SKIP: Read the number and return it as the status
-	BURN: ...
-	STOP: Return -1
-	*/
 	
 	// Get the length of the data in bytes
 	uint8_t data_length = dptr->length - sizeof(datagram);
 
-	// Allocate memory to read the data
-	void* data_buffer = malloc(data_length);
+	printf("data_length = %u\n", data_length);
 
-	// Read the data from the file
-	// Note: If the file is in little-endian format, we will need to specify the size
-	unsigned bytes_read = fread(data_buffer, 1, data_length, fp);
+	// Handle skipping datagrams
+	if (*skips > 0) {
+		printf("Skipping %u...\n", *skips);
+		--(*skips);
+		// Go to the next datagram without reading any data
+		if (!fseek(fp, data_length, SEEK_CUR))
+			status = STATUS_FAIL;
+		return status;
+	}
 
-	// Print the data
-	// Note: We will also need to know the type for this
-	print_data(data_buffer, bytes_read);
+	// If there is some sort of data to read
+	if ((dptr->type >= 0 && dptr->type <= 3) || dptr->type == 7) {
+		// Allocate memory to read the data
+		void *data = malloc(data_length);
 
-	// Free the memory
-	free(data_buffer);
+		// Read the data from the file into the buffer
+		size_t bytes_read = fread(data, 1, data_length, fp);
+
+		printf("Read %lu bytes (datagram data).\n", bytes_read);
+
+		if (bytes_read == data_length) {
+			// Print the data depending on which type it is
+			switch (dptr->type) {
+				case TYPE_INT16:
+					PRINT_DATA(data, data_length, int16_t, "%d\n");
+					break;
+				case TYPE_INT32:
+					PRINT_DATA(data, data_length, int32_t, "%d\n");
+					break;
+				case TYPE_FLOAT32:
+					PRINT_DATA(data, data_length, float, "%f\n");
+					break;
+				case TYPE_FLOAT64:
+					PRINT_DATA(data, data_length, double, "%f\n");
+					break;
+				case TYPE_ASCII:
+					PRINT_DATA(data, data_length, char, "%c\n");
+					break;
+			}
+		}
+		else
+			status = STATUS_FAIL;
+
+		// Free the memory allocated for the data
+		free(data);
+	}
+	else if (dptr->type == CONTROL_SKIP) {
+		printf("CONTROL_SKIP\n");
+		// Read the number of datagrams to skip from the file
+		size_t bytes_read = fread(skips, 1, sizeof(*skips), fp);
+
+		// If the number could not be read, then fail
+		if (bytes_read != sizeof(*skips))
+			status = STATUS_FAIL;
+	}
+	else if (dptr->type == CONTROL_BURN) {
+		printf("All system fans have been disabled, your CPU is now melting...\n");
+		status = STATUS_FAIL;
+	}
+	else if (dptr->type == CONTROL_STOP) {
+		printf("CONTROL_STOP\n");
+		status = STATUS_CONTINUE;
+	}
+	else {
+		printf("Unknown datagram type: %u\n", dptr->type);
+		status = STATUS_FAIL;
+	}
 
 	return status;
-}
-
-void print_data(unsigned char *data, unsigned size)
-{
-	for (unsigned i = 0; i < size; ++i) {
-		printf("%u ", (unsigned) data[i]);
-	}
 }
