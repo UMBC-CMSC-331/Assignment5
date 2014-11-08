@@ -62,9 +62,13 @@ typedef struct {
 	} data;
 } datagram;
 
-// Function prototypes (TODO: comment what these do)
+// Prints sizeof values of the datagram structure's fields
 void test_sizes();
+
+// Reads a binary file, and prints its data
 int read_file(const char *filename);
+
+// Reads the data of a datagram, or handles the control instruction
 int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips);
 
 int main(int argc, char **argv)
@@ -124,10 +128,17 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
 
 	printf("Version = %u, Type = %u, Length = %u\n", dptr->version, dptr->type, dptr->length);
 
-	// TODO: Handle the extra stuff with each version
-	//if (dptr->version == 1)...
-	// Skip bit, dupe bit, and checksum
-	
+	/*
+	Before reading data:
+		if version 2:
+			handle dupe bit
+		if version 3:
+			do something with ID?
+	After reading data:
+		if version 2 and 3:
+			make sure checksum is equal
+	*/
+
 	// Get the length of the data in bytes
 	uint8_t data_length = dptr->length - sizeof(datagram);
 
