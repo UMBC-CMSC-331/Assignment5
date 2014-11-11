@@ -139,7 +139,7 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
         if version 3:
             do something with ID?
     After reading data:
-        if version 2 and 3:
+        if version 2 or 3:
             make sure checksum is equal
     */
 
@@ -153,14 +153,12 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
         printf("Skipping %u...\n", *skips);
         --(*skips);
         // Go to the next datagram without reading any data
+        // Decrement counter for remaining skips
         if (!fseek(fp, data_length, SEEK_CUR)) {
             status = STATUS_FAIL;
         }
-        return status;
     }
-
-    // If there is some sort of data to read
-    if ((dptr->type >= 0 && dptr->type <= 3) || dptr->type == 7) {
+    else if ((dptr->type >= 0 && dptr->type <= 3) || dptr->type == 7) {
         // Allocate memory to read the data
         void *data = malloc(data_length);
 
