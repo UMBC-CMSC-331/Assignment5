@@ -1,5 +1,5 @@
 /* Assignment 5
-Authors: Eric Hebert, <insert names here>
+Authors: Eric Hebert, Tyler Dallwig, Insert Other Names here
 Usage:
 	make
 	./assignment5 filename
@@ -76,8 +76,9 @@ int main(int argc, char **argv)
 	int status = 0;
 	if (argc == 2) {
 		status = read_file(argv[1]);
-		if (status < 0)
+		if (status < 0) {
 			printf("Error reading file '%s'\n", argv[1]);
+		}
 	}
 	else {
 		printf("Usage: %s filename\n", argv[0]);
@@ -109,15 +110,19 @@ int read_file(const char *filename)
 		while (status == STATUS_CONTINUE) {
 			size_t bytes_read = fread(&temp_datagram, 1, sizeof(datagram), fp);
 			printf("Read %lu bytes (datagram header).\n", bytes_read);
-			if (bytes_read == sizeof(datagram))
+			if (bytes_read == sizeof(datagram)) {
 				status = handle_datagram(&temp_datagram, fp, &skips);
-			else
+			} 
+			
+			else {
 				status = STATUS_STOP;
+			}
 		}
 		file_status = 0;
 		fclose(fp);
-		if (status == STATUS_FAIL)
+		if (status == STATUS_FAIL) {
 			printf("An error occurred while processing \"%s\".\n", filename);
+		}
 	}
 	return file_status;
 }
@@ -149,8 +154,9 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
 		printf("Skipping %u...\n", *skips);
 		--(*skips);
 		// Go to the next datagram without reading any data
-		if (!fseek(fp, data_length, SEEK_CUR))
+		if (!fseek(fp, data_length, SEEK_CUR)) {
 			status = STATUS_FAIL;
+		}
 		return status;
 	}
 
@@ -184,8 +190,9 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
 					break;
 			}
 		}
-		else
+		else {
 			status = STATUS_FAIL;
+		}
 
 		// Free the memory allocated for the data
 		free(data);
