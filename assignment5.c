@@ -36,8 +36,8 @@ Usage:
 
 // Holds any version of a 32-bit datagram
 typedef struct {
-    uint8_t version: 4;
     uint8_t type: 4;
+    uint8_t version: 4;
     uint8_t length;
 
     union {
