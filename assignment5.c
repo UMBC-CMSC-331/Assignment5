@@ -153,7 +153,7 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
         // Decrement counter for remaining skips
         --(*skips);
         // Go to the next datagram without reading any data
-        if (!fseek(fp, data_length, SEEK_CUR)) {
+        if (fseek(fp, data_length, SEEK_CUR)) {
             status = STATUS_FAIL;
         }
     }
@@ -211,19 +211,18 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
     }
     else if (type == CONTROL_BURN) {
         printf("All system fans have been disabled, your CPU is now melting...\n");
-        status = STATUS_FAIL;
+        status = STATUS_STOP;
     }
     else if (type == CONTROL_STOP) {
         printf("CONTROL_STOP\n");
         status = STATUS_STOP;
     }
     else if (type == TYPE_JUNK) {
-        printf("Skipping junk data... %u\n", data_length);
+        printf("Skipping %u bytes of junk data...\n", data_length);
         status = STATUS_CONTINUE;
         // Go to the next datagram without reading any data
-        if (!fseek(fp, data_length, SEEK_CUR)) {
+        if (fseek(fp, data_length, SEEK_CUR)) {
             status = STATUS_FAIL;
-            printf("TODO: Fix this\n");
         }
     }
     else {
