@@ -72,6 +72,8 @@ int read_file(const char *filename);
 // Reads the data of a datagram, or handles the control instruction
 int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips);
 
+void print_data(uint8_t type, void *data, uint8_t data_length);
+
 int main(int argc, char **argv)
 {
     int status = 0;
@@ -186,52 +188,11 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
 
         // printf("Read %lu bytes (datagram data).\n", bytes_read);
 
-        // String names of types
-        static const char *TYPE_NAMES[] = {"INT16", "INT32", "FLOAT32", "FLOAT64", "", "", "", "ASCII"};
-
-        // Get the string name of the type
-        const char *type_str = TYPE_NAMES[type];
-
         if (bytes_read == data_length) {
-            // Print the data depending on which type it is
-            switch (type) {
-                case TYPE_INT16:
-                    PRINT_DATA(data, data_length, type_str, int16_t, "%d\n");
-                    break;
-                case TYPE_INT32:
-                    PRINT_DATA(data, data_length, type_str, int32_t, "%d\n");
-                    break;
-                case TYPE_FLOAT32:
-                    PRINT_DATA(data, data_length, type_str, float, "%.7f\n");
-                    break;
-                case TYPE_FLOAT64:
-                    PRINT_DATA(data, data_length, type_str, double, "%.15f\n");
-                    break;
-                case TYPE_ASCII:
-                    PRINT_DATA(data, data_length, type_str, char, "%c");
-                    printf("\n");
-                    break;
-            }
+            print_data(type, data, data_length);
             // If dupe is set to 1, print the data again:
             if (dupe) {
-                switch (type) {
-                case TYPE_INT16:
-                    PRINT_DATA(data, data_length, type_str, int16_t, "%d\n");
-                    break;
-                case TYPE_INT32:
-                    PRINT_DATA(data, data_length, type_str, int32_t, "%d\n");
-                    break;
-                case TYPE_FLOAT32:
-                    PRINT_DATA(data, data_length, type_str, float, "%.7f\n");
-                    break;
-                case TYPE_FLOAT64:
-                    PRINT_DATA(data, data_length, type_str, double, "%.15f\n");
-                    break;
-                case TYPE_ASCII:
-                    PRINT_DATA(data, data_length, type_str, char, "%c");
-                    printf("\n");
-                    break;
-                }
+                print_data(type, data, data_length);
             }
         }
         else {
@@ -288,4 +249,32 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
     }
 
     return status;
+}
+
+void print_data(uint8_t type, void *data, uint8_t data_length)
+{
+    // String names of types
+    static const char *TYPE_NAMES[] = {"INT16", "INT32", "FLOAT32", "FLOAT64", "", "", "", "ASCII"};
+
+    // Get the string name of the type
+    const char *type_str = TYPE_NAMES[type];
+
+    switch (type) {
+        case TYPE_INT16:
+            PRINT_DATA(data, data_length, type_str, int16_t, "%d\n");
+            break;
+        case TYPE_INT32:
+            PRINT_DATA(data, data_length, type_str, int32_t, "%d\n");
+            break;
+        case TYPE_FLOAT32:
+            PRINT_DATA(data, data_length, type_str, float, "%.7f\n");
+            break;
+        case TYPE_FLOAT64:
+            PRINT_DATA(data, data_length, type_str, double, "%.15f\n");
+            break;
+        case TYPE_ASCII:
+            PRINT_DATA(data, data_length, type_str, char, "%c");
+            printf("\n");
+            break;
+    }
 }
