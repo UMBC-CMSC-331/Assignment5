@@ -162,7 +162,18 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
     }
     
     if (dptr->version == 2 || dptr->version == 3) {
-        // verify checksum
+        uint8_t *byte = dptr;
+        uint8_t total = *byte;
+        for(int i = 0; i < dptr->length; i++) {
+            byte++;
+            total += byte;
+        }
+        if(!byte) {
+            // total == 0; checksum is valid
+        } else {
+            // total != 0; checksum is invalid
+            
+        }
     }
 
     // Get the length of the data in bytes, and the type
