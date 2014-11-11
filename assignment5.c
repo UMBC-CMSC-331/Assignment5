@@ -32,6 +32,7 @@ Usage:
         for (size_t i = 0; i < num_elements; ++i) { \
             printf(format, *((type*) data + i)); \
         } \
+        printf("\n"); \
     }
 
 // Holds any version of a 32-bit datagram
