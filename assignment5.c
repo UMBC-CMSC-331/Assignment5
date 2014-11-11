@@ -1,5 +1,5 @@
 /* Assignment 5
-Authors: Eric Hebert, Tyler Dallwig, Insert Other Names here
+Authors: Eric Hebert, Tyler Dallwig, Kendal Reed, Insert Other Names here
 Usage:
     make
     ./assignment5 filename
