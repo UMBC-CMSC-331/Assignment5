@@ -130,8 +130,7 @@ int read_file(const char *filename)
 int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
 {
     int status = STATUS_CONTINUE;
-    uint8_t dupe: 1;
-    dupe = 0;
+    uint8_t dupe = 0;
     // printf("Version = %u, Type = %u, Length = %u\n", dptr->version, dptr->type, dptr->length);
 
     /*
@@ -146,21 +145,21 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
     */
     
     // handle skip bit
-    if(dptr->skip_bit) {
+    if (dptr->data.version1.skip_bit) {
         // Do nothing- don't print, don't change status, don't decrement skips.
         return status;
     }
     
-    if(dptr->version == 2) {
+    if (dptr->version == 2) {
         // save dupe bit to use in processing
-        dupe = dptr->dupe_bit;
+        dupe = dptr->data.version2.dupe_bit;
     }
     
-    if(dptr->version == 3) {
+    if (dptr->version == 3) {
         // handle ID
     }
     
-    if(dptr->version == 2 || dptr->verion == 3) {
+    if (dptr->version == 2 || dptr->version == 3) {
         // verify checksum
     }
 
@@ -214,7 +213,7 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
                     break;
             }
             // If dupe is set to 1, print the data again:
-            if(dupe) {
+            if (dupe) {
                 switch (type) {
                 case TYPE_INT16:
                     PRINT_DATA(data, data_length, type_str, int16_t, "%d\n");
@@ -248,7 +247,7 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
         size_t bytes_read = fread(skips, 1, sizeof(*skips), fp);
         
         // If dupe is 1, repeat the print statement and double the skip value.
-        if(dupe) {
+        if (dupe) {
             printf("CONTROL_SKIPS\n");
             (*skips) *= 2;
         }
@@ -260,21 +259,21 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
     }
     else if (type == CONTROL_BURN) {
         printf("All system fans have been disabled, your CPU is now melting...\n");
-        if(dupe) {
+        if (dupe) {
             printf("All system fans have been disabled, your CPU is now melting...\n");
         }
         status = STATUS_STOP;
     }
     else if (type == CONTROL_STOP) {
         printf("CONTROL_STOP\n");
-        if(dupe) {
+        if (dupe) {
             printf("CONTROL_STOP\n");
         }
         status = STATUS_STOP;
     }
     else if (type == TYPE_JUNK) {
         printf("Skipping %u bytes of junk data...\n", data_length);
-        if(dupe) {
+        if (dupe) {
             printf("Skipping %u bytes of junk data...\n", data_length);
         }
         status = STATUS_CONTINUE;
