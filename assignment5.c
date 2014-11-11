@@ -129,7 +129,8 @@ int read_file(const char *filename)
 int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
 {
     int status = STATUS_CONTINUE;
-
+    uint8_t dupe: 1;
+    dupe = 0;
     // printf("Version = %u, Type = %u, Length = %u\n", dptr->version, dptr->type, dptr->length);
 
     /*
@@ -142,6 +143,25 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
         if version 2 or 3:
             make sure checksum is equal
     */
+    
+    // handle skip bit
+    if(dptr->skip_bit) {
+        // Do nothing- don't print, don't change status, don't decrement skips.
+        return status;
+    }
+    
+    if(dptr->version == 2) {
+        // save dupe bit to use in processing
+        dupe = dptr->dupe_bit;
+    }
+    
+    if(dptr->version == 3) {
+        // handle ID
+    }
+    
+    if(dptr->version == 2 || dptr->verion == 3) {
+        // verify checksum
+    }
 
     // Get the length of the data in bytes, and the type
     uint8_t data_length = dptr->length - sizeof(datagram);
@@ -192,6 +212,27 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
                     printf("\n");
                     break;
             }
+            // If dupe is set to 1, print the data again:
+            if(dupe) {
+                switch (type) {
+                case TYPE_INT16:
+                    PRINT_DATA(data, data_length, type_str, int16_t, "%d\n");
+                    break;
+                case TYPE_INT32:
+                    PRINT_DATA(data, data_length, type_str, int32_t, "%d\n");
+                    break;
+                case TYPE_FLOAT32:
+                    PRINT_DATA(data, data_length, type_str, float, "%.7f\n");
+                    break;
+                case TYPE_FLOAT64:
+                    PRINT_DATA(data, data_length, type_str, double, "%.15f\n");
+                    break;
+                case TYPE_ASCII:
+                    PRINT_DATA(data, data_length, type_str, char, "%c");
+                    printf("\n");
+                    break;
+                }
+            }
         }
         else {
             status = STATUS_FAIL;
@@ -202,23 +243,39 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
     }
     else if (type == CONTROL_SKIP) {
         printf("CONTROL_SKIP\n");
-        // Read the number of datagrams to skip from the file
+        // Read the number of datagrams to skip from the file (store this number in skips)
         size_t bytes_read = fread(skips, 1, sizeof(*skips), fp);
+        
+        // If dupe is 1, repeat the print statement and double the skip value.
+        if(dupe) {
+            printf("CONTROL_SKIPS\n");
+            (*skips) *= 2;
+        }
 
         // If the number could not be read, then fail
-        if (bytes_read != sizeof(*skips))
+        if (bytes_read != sizeof(*skips)) {
             status = STATUS_FAIL;
+        }
     }
     else if (type == CONTROL_BURN) {
         printf("All system fans have been disabled, your CPU is now melting...\n");
+        if(dupe) {
+            printf("All system fans have been disabled, your CPU is now melting...\n");
+        }
         status = STATUS_STOP;
     }
     else if (type == CONTROL_STOP) {
         printf("CONTROL_STOP\n");
+        if(dupe) {
+            printf("CONTROL_STOP\n");
+        }
         status = STATUS_STOP;
     }
     else if (type == TYPE_JUNK) {
         printf("Skipping %u bytes of junk data...\n", data_length);
+        if(dupe) {
+            printf("Skipping %u bytes of junk data...\n", data_length);
+        }
         status = STATUS_CONTINUE;
         // Go to the next datagram without reading any data
         if (fseek(fp, data_length, SEEK_CUR)) {
