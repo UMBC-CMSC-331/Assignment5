@@ -164,7 +164,7 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
     if (dptr->version == 2 || dptr->version == 3) {
         uint8_t *byte = dptr;
         uint8_t total = *byte;
-        for(int i = 0; i < dptr->length; i++) {
+        for(int i = 0; i < 4; i++) {
             byte++;
             total += byte;
         }
