@@ -39,13 +39,13 @@ typedef struct {
     uint8_t version: 4;
     uint8_t type: 4;
     uint8_t length;
-    
+
     union {
         // Datagram version 1
         struct {
             uint16_t skip_bit: 1;
         } version1;
-        
+
         // Datagram version 2
         struct {
             uint8_t skip_bit: 1;
@@ -112,8 +112,7 @@ int read_file(const char *filename)
             printf("Read %lu bytes (datagram header).\n", bytes_read);
             if (bytes_read == sizeof(datagram)) {
                 status = handle_datagram(&temp_datagram, fp, &skips);
-            } 
-            
+            }
             else {
                 status = STATUS_STOP;
             }
