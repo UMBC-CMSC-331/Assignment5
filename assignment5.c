@@ -9,6 +9,8 @@ Usage:
 #include <stdio.h>
 #include <stdint.h>
 
+#define HEADER_SIZE 4
+
 // Valid values for the "type" field
 #define TYPE_INT16 0
 #define TYPE_INT32 1
@@ -36,19 +38,19 @@ Usage:
     }
 
 // Holds any version of a 32-bit datagram
+// TODO: Switch to a uint32_t with a few bit-shifting functions to extract fields
 typedef struct {
     uint8_t type: 4;
     uint8_t version: 4;
     uint8_t length;
 
     union {
-        // Datagram version 1
-        struct {
-            uint16_t skip_bit: 1;
-        } version1;
+        // The skip bit exists in every version
+        uint16_t skip_bit: 1;
 
         // Datagram version 2
         struct {
+            // Including skip bit to make sure alignment is correct
             uint8_t skip_bit: 1;
             uint8_t dupe_bit: 1;
             uint8_t checksum;
@@ -65,6 +67,7 @@ typedef struct {
 
 // Prints sizeof values of the datagram structure's fields
 void test_sizes();
+void test_datagram();
 
 // Reads a binary file, and prints its data
 int read_file(const char *filename);
@@ -76,6 +79,9 @@ void print_data(uint8_t type, void *data, uint8_t data_length);
 
 int main(int argc, char **argv)
 {
+    // test_sizes();
+    // test_datagram();
+
     int status = 0;
     if (argc == 2) {
         status = read_file(argv[1]);
@@ -96,9 +102,27 @@ void test_sizes()
     datagram my_data;
     printf("sizeof(my_data) = %lu\n", sizeof(my_data));
     printf("sizeof(my_data.data) = %lu\n", sizeof(my_data.data));
-    printf("sizeof(my_data.data.version1) = %lu\n", sizeof(my_data.data.version1));
+    // printf("sizeof(my_data.data.version1) = %lu\n", sizeof(my_data.data.version1));
     printf("sizeof(my_data.data.version2) = %lu\n", sizeof(my_data.data.version2));
-    printf("sizeof(my_data.data.version3) = %lu\n", sizeof(my_data.data.version3));
+    printf("sizeof(my_data.data.version3) = %lu\n\n", sizeof(my_data.data.version3));
+}
+
+void test_datagram()
+{
+    datagram test_data = {0};
+    test_data.data.skip_bit = 0;
+    printf("Skip bit: %u\n", test_data.data.version3.skip_bit);
+    test_data.data.skip_bit = 1;
+    printf("Skip bit: %u\n", test_data.data.version3.skip_bit);
+    test_data.data.version2.checksum = 97;
+    printf("Checksum: %u\n", test_data.data.version3.checksum);
+    test_data.data.version2.checksum = 0;
+    printf("Checksum: %u\n", test_data.data.version3.checksum);
+    test_data.data.version2.dupe_bit = 1;
+    test_data.data.version2.skip_bit = 0;
+    printf("Dupe bit: %u\n", test_data.data.version2.dupe_bit);
+    printf("Skip bit: %u\n", test_data.data.version2.skip_bit);
+    printf("\n");
 }
 
 int read_file(const char *filename)
@@ -113,6 +137,7 @@ int read_file(const char *filename)
         while (status == STATUS_CONTINUE) {
             size_t bytes_read = fread(&temp_datagram, 1, sizeof(datagram), fp);
             // printf("Read %lu bytes (datagram header).\n", bytes_read);
+            // TODO: Handle eof/error cases
             if (bytes_read == sizeof(datagram)) {
                 status = handle_datagram(&temp_datagram, fp, &skips);
             }
@@ -132,47 +157,53 @@ int read_file(const char *filename)
 int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
 {
     int status = STATUS_CONTINUE;
-    uint8_t dupe = 0;
     // printf("Version = %u, Type = %u, Length = %u\n", dptr->version, dptr->type, dptr->length);
 
-    /*
-    Before reading data:
-        if version 2:
-            handle dupe bit
-        if version 3:
-            do something with ID?
-    After reading data:
-        if version 2 or 3:
-            make sure checksum is equal
-    */
-    
-    // handle skip bit
-    if (dptr->data.version1.skip_bit) {
+    // Handle skip bit
+    if (dptr->data.skip_bit) {
         // Do nothing- don't print, don't change status, don't decrement skips.
+        printf("Skip bit is set, so skipping.\n");
         return status;
     }
-    
+
+    // Make sure the version is valid
+    if (dptr->version < 1 || dptr->version > 3) {
+        printf("Invalid version: %u\n", dptr->version);
+        return status;
+    }
+
+    // TODO: Handle this in a cleaner way without manually duplicating everything
+    uint8_t dupe = 0;
     if (dptr->version == 2) {
-        // save dupe bit to use in processing
+        // Save dupe bit to use in processing
         dupe = dptr->data.version2.dupe_bit;
+        printf("Dupe bit is set.\n");
     }
-    
+
+    // TODO: Determine if we need to keep this
     if (dptr->version == 3) {
-        // handle ID
+        // Handle ID
+        printf("This datagram has the unique ID: %u\n", dptr->data.version3.id);
     }
-    
+
     if (dptr->version == 2 || dptr->version == 3) {
-        uint8_t *byte = dptr;
-        uint8_t total = *byte;
-        for(int i = 0; i < 4; i++) {
-            byte++;
-            total += byte;
+        // TODO: Move checksum handling to a function
+        uint8_t *byte = (uint8_t *) dptr;
+        uint8_t total = 0;
+        // A + B + C + D = 0
+        // D = 256 - ((A + B + C) % 256)
+        for (unsigned i = 0; i < sizeof(datagram); ++i) {
+            total += byte[i];
         }
-        if(!byte) {
-            // total == 0; checksum is valid
-        } else {
-            // total != 0; checksum is invalid
-            
+        // These two values should be equal
+        printf("Byte: %u, Checksum: %u\n", byte[3], dptr->data.version2.checksum);
+        // Check checksum
+        if (total == 0) {
+            printf("Checksum is valid. ");
+        }
+        else {
+            printf("Checksum is invalid!!! ");
+            return status;
         }
     }
 
