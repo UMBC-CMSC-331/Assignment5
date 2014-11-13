@@ -137,12 +137,16 @@ int read_file(const char *filename)
         while (status == STATUS_CONTINUE) {
             size_t bytes_read = fread(&temp_datagram, 1, sizeof(datagram), fp);
             // printf("Read %lu bytes (datagram header).\n", bytes_read);
-            // TODO: Handle eof/error cases
             if (bytes_read == sizeof(datagram)) {
                 status = handle_datagram(&temp_datagram, fp, &skips);
             }
-            else {
+            else if (feof(fp)) {
+                printf("Reached the end of the file.\n");
                 status = STATUS_STOP;
+            }
+            else {
+                printf("There was an error reading the file.\n");
+                status = STATUS_FAIL;
             }
         }
         file_status = 0;
@@ -228,8 +232,6 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
         // Read the data from the file into the buffer
         size_t bytes_read = fread(data, 1, data_length, fp);
 
-        // printf("Read %lu bytes (datagram data).\n", bytes_read);
-
         if (bytes_read == data_length) {
             print_data(type, data, data_length);
             // If dupe is set to 1, print the data again:
@@ -238,6 +240,7 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
             }
         }
         else {
+            printf("Read %u/%u bytes of the datagram.", bytes_read, data_length);
             status = STATUS_FAIL;
         }
 
