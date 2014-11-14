@@ -3,7 +3,7 @@ Assignment 5
 
 Instructions from Blackboard:
 
-Due Nov 11
+Due Nov 18
 ----------
 
 Thirty years ago, I wrote a program that stored data in a compact binary format. I now wish to retrieve that data. Sadly, I no longer have the codec program that I wrote to work with this data format. I do, however, have the spec.
