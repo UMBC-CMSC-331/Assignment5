@@ -143,20 +143,6 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
     // Get the datagram type
     uint8_t type = dptr->type;
 
-    if (*skips > 0 || dptr->data.skip_bit) {
-        // Handle skipping N datagrams and the skip bit
-        if (*skips > 0) {
-            --(*skips);
-        }
-        return skip_datagram(fp, data_length);
-    }
-
-    // Make sure the version is valid
-    if (dptr->version < 1 || dptr->version > 3) {
-        printf("Invalid version: %u\n", dptr->version);
-        return status;
-    }
-
     // Normally, we only run things once
     int run_count = 1;
 
@@ -164,6 +150,20 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
     if (dptr->version == 2 && dptr->data.version2.dupe_bit) {
         run_count = 2;
     }
+    
+    // When the skip bit is set, don't run anything
+    if(dptr->data.skip_bit) {
+        run_count = 0;
+    }
+    
+    // When we're in the middle of skipping N datagrams, don't run anything, 
+    // but decrement the skip count
+    if (*skips > 0) {
+	    run_count = 0;
+        --(*skips);
+    }
+
+    // Make sure the version is valid
 
     if (dptr->version == 2 || dptr->version == 3) {
         // Skip the datagram if the checksum is invalid (ignoring the length)
@@ -172,15 +172,21 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
                 printf("Checksum is invalid!!!\n");
             }
             return status;
+            // This return statement couldn't be fit into the main structure
+            // because it requires nested ifs to reach.
         }
     }
 
-    if (dptr->length < sizeof(datagram)) {
-        // Make sure the length is valid
+    if (dptr->version < 1 || dptr->version > 3) {
+        // Handle datagram with invalid version value
+        printf("Invalid version: %u\n", dptr->version);
+        status = STATUS_FAIL;
+    } else if (dptr->length < sizeof(datagram)) {
+        // Handle datagram with invalid length value
         while (run_count--) {
             printf("Length is invalid: %u\n", dptr->length);
+            status = STATUS_FAIL;
         }
-        status = STATUS_FAIL;
     }
     else if ((type >= 0 && type <= 3) || type == 7) {
         // Handle datagram containing data
@@ -191,17 +197,15 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
         // Read the data from the file into the buffer
         size_t bytes_read = fread(data, 1, data_length, fp);
 
-        if (bytes_read == data_length) {
-            // Print the data read as the correct type
-            while (run_count--) {
+        while(run_count--) {
+            if (bytes_read == data_length) {
+                // Print the data read as the correct type
                 print_data(type, data, data_length);
             }
-        }
-        else {
-            while (run_count--) {
+            else {
                 printf("Read %lu/%u bytes of the datagram.\n", bytes_read, data_length);
+                status = STATUS_FAIL;
             }
-            status = STATUS_FAIL;
         }
 
         // Free the memory allocated for the data
@@ -236,11 +240,16 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
         // Handle datagram containing junk data
         // Skip junk data
         status = skip_datagram(fp, data_length);
+        // This instruction isn't modified by run_count because it includes
+        // an fread command. "Skip this datagram twice" doesn't mean anything
+        // different from "Skip this datagram" in this context.
     }
     else {
         // Handle datagram with unrecognized type value
-        printf("Unknown datagram type: %u\n", type);
-        status = STATUS_FAIL;
+        while (run_count--) {
+            printf("Unknown datagram type: %u\n", type);
+            status = STATUS_FAIL;
+        }
     }
 
     return status;
