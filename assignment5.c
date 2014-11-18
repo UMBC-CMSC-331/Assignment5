@@ -214,7 +214,9 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
     if (dptr->version == 2 || dptr->version == 3) {
         // Skip the datagram if the checksum is invalid (ignoring the length)
         if (!valid_checksum((uint8_t *) dptr)) {
-            printf("Checksum is invalid!!!\n");
+            while(run_count--) {
+                printf("Checksum is invalid!!!\n");
+            }
             // fix_checksum((uint8_t *) dptr, fp);
             return status;
         }
@@ -222,7 +224,9 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
 
     if (dptr->length < sizeof(datagram)) {
         // Make sure the length is valid
-        printf("Length is invalid: %u\n", dptr->length);
+        while(run_count--) {
+            printf("Length is invalid: %u\n", dptr->length);
+        }
         status = STATUS_FAIL;
     }
     else if (*skips > 0) {
@@ -232,6 +236,8 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
         status = skip_datagram(fp, data_length);
     }
     else if ((type >= 0 && type <= 3) || type == 7) {
+        // Handle datagram containing data
+        
         // Allocate memory to read the data
         void *data = malloc(data_length);
 
@@ -245,7 +251,9 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
             }
         }
         else {
-            printf("Read %lu/%u bytes of the datagram.\n", bytes_read, data_length);
+            while (run_count--) {
+                printf("Read %lu/%u bytes of the datagram.\n", bytes_read, data_length);
+            }
             status = STATUS_FAIL;
         }
 
@@ -253,12 +261,13 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
         free(data);
     }
     else if (type == CONTROL_SKIP) {
+        // Handle datagram containing SKIP instruction
         // Read the number of datagrams to skip from the file (store this number in skips)
         size_t bytes_read = fread(skips, 1, sizeof(*skips), fp);
 
         // Modify the skip value according to the run count.
         // (This doubles the skips if the dupe bit is set.)
-            (*skips) *= run_count;
+        (*skips) *= run_count;
 
         // If the number could not be read, then fail
         if (bytes_read != sizeof(*skips)) {
@@ -266,19 +275,23 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
         }
     }
     else if (type == CONTROL_BURN) {
+        // Handle datagram containing BURN instruction
         while (run_count--) {
             status = handle_burn();
         }
     }
     else if (type == CONTROL_STOP) {
+        // Handle datagram containing STOP instruction
         // Stop reading the file
         status = STATUS_STOP;
     }
     else if (type == TYPE_JUNK) {
+        // Handle datagram containing junk data
         // Skip junk data
         status = skip_datagram(fp, data_length);
     }
     else {
+        // Handle datagram with unrecognized type value
         printf("Unknown datagram type: %u\n", type);
         status = STATUS_FAIL;
     }
