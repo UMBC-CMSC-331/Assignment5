@@ -83,11 +83,10 @@ int handle_burn();
 
 int main(int argc, char **argv)
 {
-    // test_sizes();
-    // test_datagram();
-
     int status = 0;
+    // Check number of command line arguments
     if (argc == 2) {
+        // Read and process the file
         status = read_file(argv[1]);
         if (status < 0) {
             printf("Error reading file '%s'\n", argv[1]);
@@ -103,8 +102,8 @@ int main(int argc, char **argv)
 int read_file(const char *filename)
 {
     int file_status = -1;
+    // Open the file in read-only binary mode
     FILE *fp = fopen(filename, "rb");
-    // FILE *fp = fopen(filename, "r+b"); // Used for fixing checksums
     if (fp) {
         datagram temp_datagram;
         int status = STATUS_CONTINUE;
@@ -112,8 +111,8 @@ int read_file(const char *filename)
         // Read each datagram in the file, until STOP or EOF is reached
         while (status == STATUS_CONTINUE) {
             size_t bytes_read = fread(&temp_datagram, 1, sizeof(datagram), fp);
-            // printf("Read %lu bytes (datagram header).\n", bytes_read);
             if (bytes_read == sizeof(datagram)) {
+                // Process the datagram if its header was successfully read
                 status = handle_datagram(&temp_datagram, fp, &skips);
             }
             else if (feof(fp)) {
