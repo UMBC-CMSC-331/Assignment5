@@ -8,7 +8,6 @@ Usage:
 /*
 TODO:
     Remove debugging code
-    Remove checksum fixing code
 */
 
 #include <stdlib.h>
@@ -308,25 +307,6 @@ bool valid_checksum(uint8_t *data)
 
     // Total needs to be 0 for the checksum to be valid
     return (total == 0);
-}
-
-void fix_checksum(uint8_t *data, FILE *fp)
-{
-    uint8_t total = 0;
-
-    // Add up all of the bytes of the header
-    for (unsigned i = 0; i < 3; ++i) {
-        total += data[i];
-    }
-
-    // Calculate the new checksum
-    printf("Old checksum: %u, ", data[3]);
-    data[3] = (256 - total);
-    printf("New checksum: %u\n", data[3]);
-
-    // Write the checksum back to the file
-    fseek(fp, -4, SEEK_CUR);
-    fwrite(data, 1, 4, fp);
 }
 
 void print_data(uint8_t type, void *data, uint8_t data_length)
