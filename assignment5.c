@@ -83,7 +83,6 @@ int skip_datagram(FILE *fp, size_t data_length);
 
 // Returns true if checksum is valid
 bool valid_checksum(uint8_t *data);
-void fix_checksum(uint8_t *data, FILE *fp);
 
 // Prints data based on the numeric type value from the binary file
 void print_data(uint8_t type, void *data, uint8_t data_length);
@@ -214,17 +213,16 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
     if (dptr->version == 2 || dptr->version == 3) {
         // Skip the datagram if the checksum is invalid (ignoring the length)
         if (!valid_checksum((uint8_t *) dptr)) {
-            while(run_count--) {
+            while (run_count--) {
                 printf("Checksum is invalid!!!\n");
             }
-            // fix_checksum((uint8_t *) dptr, fp);
             return status;
         }
     }
 
     if (dptr->length < sizeof(datagram)) {
         // Make sure the length is valid
-        while(run_count--) {
+        while (run_count--) {
             printf("Length is invalid: %u\n", dptr->length);
         }
         status = STATUS_FAIL;
