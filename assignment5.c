@@ -5,11 +5,6 @@ Usage:
     ./assignment5 filename
 */
 
-/*
-TODO:
-    Remove debugging code
-*/
-
 #include <stdlib.h>
 #include <stdio.h>
 #include <stdint.h>
@@ -68,10 +63,6 @@ typedef struct {
     } data;
 } datagram;
 
-// Prints sizeof values of the datagram structure's fields
-void test_sizes();
-void test_datagram();
-
 // Reads a binary file, and prints its data
 int read_file(const char *filename);
 
@@ -107,35 +98,6 @@ int main(int argc, char **argv)
         status = 1;
     }
     return status;
-}
-
-void test_sizes()
-{
-    // Make sure sizes are good (can remove this later)
-    datagram my_data;
-    printf("sizeof(my_data) = %lu\n", sizeof(my_data));
-    printf("sizeof(my_data.data) = %lu\n", sizeof(my_data.data));
-    // printf("sizeof(my_data.data.version1) = %lu\n", sizeof(my_data.data.version1));
-    printf("sizeof(my_data.data.version2) = %lu\n", sizeof(my_data.data.version2));
-    printf("sizeof(my_data.data.version3) = %lu\n\n", sizeof(my_data.data.version3));
-}
-
-void test_datagram()
-{
-    datagram test_data = {0};
-    test_data.data.skip_bit = 0;
-    printf("Skip bit: %u\n", test_data.data.version3.skip_bit);
-    test_data.data.skip_bit = 1;
-    printf("Skip bit: %u\n", test_data.data.version3.skip_bit);
-    test_data.data.version2.checksum = 97;
-    printf("Checksum: %u\n", test_data.data.version3.checksum);
-    test_data.data.version2.checksum = 0;
-    printf("Checksum: %u\n", test_data.data.version3.checksum);
-    test_data.data.version2.dupe_bit = 1;
-    test_data.data.version2.skip_bit = 0;
-    printf("Dupe bit: %u\n", test_data.data.version2.dupe_bit);
-    printf("Skip bit: %u\n", test_data.data.version2.skip_bit);
-    printf("\n");
 }
 
 int read_file(const char *filename)
@@ -175,7 +137,6 @@ int read_file(const char *filename)
 int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
 {
     int status = STATUS_CONTINUE;
-    // printf("Version = %u, Type = %u, Length = %u\n", dptr->version, dptr->type, dptr->length);
 
     // Get the length of the data portion in bytes (not including the header)
     uint8_t data_length = dptr->length - sizeof(datagram);
@@ -185,7 +146,6 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
 
     if (*skips > 0 || dptr->data.skip_bit) {
         // Handle skipping N datagrams and the skip bit
-        // printf("Skipping %u datagrams...\n", *skips);
         if (*skips > 0) {
             --(*skips);
         }
