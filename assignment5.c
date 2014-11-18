@@ -256,10 +256,9 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
         // Read the number of datagrams to skip from the file (store this number in skips)
         size_t bytes_read = fread(skips, 1, sizeof(*skips), fp);
 
-        // Double the skip value if the dupe bit is set
-        if (run_count >= 2) {
-            (*skips) *= 2;
-        }
+        // Modify the skip value according to the run count.
+        // (This doubles the skips if the dupe bit is set.)
+            (*skips) *= run_count;
 
         // If the number could not be read, then fail
         if (bytes_read != sizeof(*skips)) {
