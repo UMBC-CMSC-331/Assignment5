@@ -82,7 +82,7 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips);
 int skip_datagram(FILE *fp, size_t data_length);
 
 // Returns true if checksum is valid
-bool valid_checksum(uint8_t *data);
+bool valid_checksum(void *data);
 
 // Prints data based on the numeric type value from the binary file
 void print_data(uint8_t type, void *data, uint8_t data_length);
@@ -183,16 +183,13 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
     // Get the datagram type
     uint8_t type = dptr->type;
 
-    // Skip this datagram if the skip bit is set
-    if (dptr->data.skip_bit) {
-        // printf("Skip bit is set, so skipping this datagram.\n");
-        // Count this as a skip if currently skipping datagrams
+    if (*skips > 0 || dptr->data.skip_bit) {
+        // Handle skipping N datagrams and the skip bit
+        // printf("Skipping %u datagrams...\n", *skips);
         if (*skips > 0) {
             --(*skips);
         }
-        // Skip over the data in the file
-        status = skip_datagram(fp, data_length);
-        return status;
+        return skip_datagram(fp, data_length);
     }
 
     // Make sure the version is valid
@@ -206,13 +203,12 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
 
     // When the dupe bit is set, run things twice
     if (dptr->version == 2 && dptr->data.version2.dupe_bit) {
-        ++run_count;
-        // printf("Dupe bit is set.\n");
+        run_count = 2;
     }
 
     if (dptr->version == 2 || dptr->version == 3) {
         // Skip the datagram if the checksum is invalid (ignoring the length)
-        if (!valid_checksum((uint8_t *) dptr)) {
+        if (!valid_checksum(dptr)) {
             while (run_count--) {
                 printf("Checksum is invalid!!!\n");
             }
@@ -226,12 +222,6 @@ int handle_datagram(datagram *dptr, FILE *fp, uint32_t *skips)
             printf("Length is invalid: %u\n", dptr->length);
         }
         status = STATUS_FAIL;
-    }
-    else if (*skips > 0) {
-        // Handle skipping datagrams
-        // printf("Skipping %u datagrams...\n", *skips);
-        --(*skips);
-        status = skip_datagram(fp, data_length);
     }
     else if ((type >= 0 && type <= 3) || type == 7) {
         // Handle datagram containing data
@@ -306,13 +296,13 @@ int skip_datagram(FILE *fp, size_t data_length)
     return STATUS_CONTINUE;
 }
 
-bool valid_checksum(uint8_t *data)
+bool valid_checksum(void *data)
 {
     uint8_t total = 0;
 
     // Add up all of the bytes of the header
     for (unsigned i = 0; i < sizeof(datagram); ++i) {
-        total += data[i];
+        total += ((uint8_t *) data)[i];
     }
 
     // Total needs to be 0 for the checksum to be valid
